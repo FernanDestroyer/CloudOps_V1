@@ -7,6 +7,7 @@ import { Header, SectionTitle, ServiceCard, Sidebar, StatCard, StatusBadge, Clou
 import { awsServices, costData } from './data'
 import type { Proposal } from './types'
 import './styles.css'
+import Application from './application'
 
 const trend = [{n:'May', v:198},{n:'Jun',v:216},{n:'Jul',v:205},{n:'Ago',v:249},{n:'Sep',v:286}]
 const money = (amount:number) => `$${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}`
@@ -25,7 +26,7 @@ function NetworkPage(){return <><Header title="Arquitectura de red" subtitle="To
 
 function Services(){const [query,setQuery]=useState(''),[category,setCategory]=useState('Todos');const filtered=awsServices.filter(s=>(category==='Todos'||s.category===category)&&s.name.toLowerCase().includes(query.toLowerCase()));const cats=['Todos',...new Set(awsServices.map(s=>s.category))];return <><Header title="Catalogo de servicios AWS" subtitle="Explora los servicios que componen tu propuesta cloud."/><main><section className="service-tools"><div className="search"><Boxes size={18}/><input placeholder="Buscar servicios..." value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button onClick={()=>setQuery('')}><X size={16}/></button>}</div><div className="filters">{cats.map(c=><button key={c} className={c===category?'selected':''} onClick={()=>setCategory(c)}>{c}</button>)}</div></section><p className="results">{filtered.length} servicios encontrados</p><section className="service-grid">{filtered.map(s=><ServiceCard service={s} key={s.name}/>)}</section></main></>}
 
-function App(){return <BrowserRouter><div className="app"><Sidebar/><div className="content"><Routes><Route path="/dashboard" element={<Dashboard/>}/><Route path="/planning" element={<Planning/>}/><Route path="/costs" element={<Costs/>}/><Route path="/infrastructure" element={<Infrastructure/>}/><Route path="/security" element={<Security/>}/><Route path="/network" element={<NetworkPage/>}/><Route path="/services" element={<Services/>}/><Route path="*" element={<Navigate to="/dashboard" replace/>}/></Routes></div></div></BrowserRouter>}
+function App(){return <Application/>}
 export default App
 
 createRoot(document.getElementById('root')!).render(<App />)
