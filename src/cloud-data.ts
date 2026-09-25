@@ -8,9 +8,9 @@ export const SELECTED_PROPOSAL_KEY = 'cloudops-selected-proposal'
 export const SELECTED_PROPOSAL_EVENT = 'selected-proposal-updated'
 
 export const regions = [
-  { code: 'us-east-1', name: 'N. Virginia', factor: 1, estimatedUsers: 100000, status: 'healthy' as const },
-  { code: 'sa-east-1', name: 'Sao Paulo', factor: 1.25, estimatedUsers: 60000, status: 'healthy' as const },
-  { code: 'eu-west-1', name: 'Ireland', factor: 1.1, estimatedUsers: 80000, status: 'review' as const },
+  { code: 'us-east-1', name: 'N. Virginia', factor: 1, estimatedUsers: 100000, status: 'healthy' as const, recommendation: 'Recomendada para cargas globales, mayor capacidad y menor costo estimado.' },
+  { code: 'sa-east-1', name: 'Sao Paulo', factor: 1.25, estimatedUsers: 60000, status: 'healthy' as const, recommendation: 'Recomendada para usuarios de Latinoamerica que requieren baja latencia.' },
+  { code: 'eu-west-1', name: 'Ireland', factor: 1.1, estimatedUsers: 80000, status: 'review' as const, recommendation: 'Recomendada para usuarios europeos y cargas con residencia de datos en Europa.' },
 ]
 
 export const serviceMonthlyRates: Record<string, number> = {
