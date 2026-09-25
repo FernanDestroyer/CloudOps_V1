@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Activity, ArrowRight, Boxes, Cloud, DollarSign, Download, Globe2, LockKeyhole, MapPin, Network, Router, Save, Server, Shield, ShieldCheck, Trash2, Wifi } from 'lucide-react'
+import { Activity, ArrowRight, Boxes, Cloud, Database, DollarSign, Download, Globe2, LockKeyhole, MapPin, Network, Router, Save, Server, Shield, ShieldCheck, Trash2, Wifi } from 'lucide-react'
 import { Header, SectionTitle, StatCard, StatusBadge } from './components'
 import { awsServices, costData } from './data'
 import type { Proposal } from './types'
@@ -14,6 +14,7 @@ import {
   regions,
   saveProposals,
   serviceMonthlyRates,
+  useProposals,
   useSelectedProposal,
 } from './cloud-data'
 
@@ -84,13 +85,10 @@ export function CloudDashboard() {
 
 export function CloudPlanning() {
   const activeRegion = localStorage.getItem(ACTIVE_REGION_KEY) || regions[0].code
-  const { proposals, selectedId } = useSelectedProposal()
+  const proposals = useProposals()
   const [proposal, setProposal] = useState<Proposal>({ ...blankProposal, region: regionLabel(activeRegion) })
   const [message, setMessage] = useState('')
   const preview = estimateProposal(proposal)
-  const selectedProposal = proposals.find(item => item.id === selectedId)
-  const criteriaProposal = selectedProposal ?? proposal
-  const criteriaEstimate = estimateProposal(criteriaProposal)
   const update = (key: keyof Proposal, value: string | string[]) => setProposal(current => ({ ...current, [key]: value }))
   const toggleService = (service: string) => update('services', proposal.services.includes(service) ? proposal.services.filter(item => item !== service) : [...proposal.services, service])
   const submit = (event: FormEvent) => {
@@ -106,7 +104,7 @@ export function CloudPlanning() {
     setMessage('Propuesta eliminada y costos recalculados.')
   }
 
-  return <><Header title="Planificacion cloud" subtitle="Diseña propuestas con una estimacion mensual inmediata."/><main>
+  return <><Header title="Planificacion cloud" subtitle="Diseña propuestas con una estimacion mensual inmediata." showPlanningSelector={false}/><main>
     <div className="planning-grid">
       <form className="panel form-panel" onSubmit={submit}>
         <SectionTitle title="Nueva propuesta" detail="Los cambios actualizan la estimacion en tiempo real."/>
@@ -119,12 +117,12 @@ export function CloudPlanning() {
           <label className="span-2">Disponibilidad<select value={proposal.availability} onChange={event => update('availability', event.target.value)}><option>Disponibilidad estandar</option><option>Alta disponibilidad (Multi-AZ)</option><option>Critica (Multi-region)</option></select></label>
           <label className="span-2">Descripcion<textarea value={proposal.description} onChange={event => update('description', event.target.value)}/></label>
         </div>
-        <p className="field-title">Servicios AWS</p>
+        <p className="field-title">Servicios AWS incluidos</p>
         <div className="service-picker">{awsServices.map(service => <label className={proposal.services.includes(service.name) ? 'selected' : ''} key={service.name}><input type="checkbox" checked={proposal.services.includes(service.name)} onChange={() => toggleService(service.name)}/><span>{service.name}</span></label>)}</div>
         <div className="estimate logic-estimate"><span>Estimacion mensual</span><h2>{money(preview.monthly)}</h2><small>{proposal.services.length} servicios · escala de carga x{preview.userFactor}</small></div>
         <button className="full-btn" type="submit"><Save size={17}/> Guardar propuesta</button>
       </form>
-      <aside className="panel proposal-summary"><SectionTitle title="Criterios del calculo" detail={selectedProposal ? `Precios calculados para ${selectedProposal.name}.` : 'Precios del borrador actual.'}/><div className="logic-factors"><span>Usuarios<b>x{criteriaEstimate.userFactor}</b></span><span>Disponibilidad<b>{criteriaProposal.availability.includes('Critica') ? 'Multi-region' : criteriaProposal.availability.includes('Multi-AZ') ? 'Multi-AZ' : 'Estandar'}</b></span><span>Region<b>{criteriaProposal.region.split(' ')[0]}</b></span></div><div className="price-card-grid">{criteriaEstimate.services.map(service => <article className="price-card" key={service.name}><div><Boxes size={17}/><b>{service.name}</b></div><span>Tarifa base mensual <strong>{money(serviceMonthlyRates[service.name] ?? 0)}</strong></span><span>Costo en esta planificacion <strong>{money(service.cost)}</strong></span></article>)}</div>{!criteriaEstimate.services.length && <p className="empty">Selecciona servicios para consultar sus precios.</p>}<p className="empty">Valores referenciales para planificacion. No sustituyen AWS Pricing Calculator.</p></aside>
+      <aside className="panel proposal-summary"><SectionTitle title="Criterios del calculo" detail="Factores del borrador y catalogo completo de precios."/><div className="logic-factors"><span>Usuarios<b>x{preview.userFactor}</b></span><span>Disponibilidad<b>{proposal.availability.includes('Critica') ? 'Multi-region' : proposal.availability.includes('Multi-AZ') ? 'Multi-AZ' : 'Estandar'}</b></span><span>Region<b>{proposal.region.split(' ')[0]}</b></span></div><div className="price-card-grid">{awsServices.map(service => <article className="price-card" key={service.name}><div><Boxes size={17}/><b>{service.name}</b></div><span>{service.description}</span><span>Tarifa base mensual <strong>{money(serviceMonthlyRates[service.name] ?? 0)}</strong></span></article>)}</div><p className="empty">Estas tarjetas son informativas. La selección de servicios se realiza únicamente en el formulario.</p></aside>
     </div>
     <section className="panel proposals"><SectionTitle title="Propuestas guardadas" detail={`${proposals.length} soluciones incluidas en el dashboard`}/><div className="proposal-list">{proposals.map(item => <article key={item.id ?? item.name}><div><b>{item.name}</b><span>{item.region} · {item.services.join(', ')}</span><small>{item.createdAt}</small></div><div className="proposal-actions"><strong>{money(estimateProposal(item).monthly)} / mes</strong><button className="delete-btn" onClick={() => remove(item.id)}><Trash2 size={14}/> Eliminar</button></div></article>)}</div>{!proposals.length && <p className="empty">Aun no hay propuestas guardadas.</p>}</section>
     {message && <div className="action-message">{message}<button onClick={() => setMessage('')}>Cerrar</button></div>}
@@ -199,16 +197,36 @@ export function CloudNetwork() {
   const { proposals, selectedId } = useSelectedProposal()
   const scoped = selectedId ? proposals.filter(proposal => proposal.id === selectedId) : proposals
   const services = new Set(scoped.flatMap(proposal => proposal.services))
-  const networkOrder = ['Route 53', 'CloudFront', 'Amazon VPC', 'Amazon EC2', 'Amazon RDS', 'Amazon S3']
-  const nodes = networkOrder.filter(service => services.has(service))
-  const icons: Record<string, typeof Cloud> = { 'Route 53': Router, CloudFront: Wifi, 'Amazon VPC': Network, 'Amazon EC2': Server, 'Amazon RDS': Server, 'Amazon S3': Boxes }
+  const edgeServices = ['Route 53', 'CloudFront'].filter(service => services.has(service))
+  const computeServices = ['Amazon EC2'].filter(service => services.has(service))
+  const dataServices = ['Amazon RDS', 'Amazon S3'].filter(service => services.has(service))
+  const nodeCount = edgeServices.length + computeServices.length + dataServices.length + (services.has('Amazon VPC') ? 1 : 0)
+  const activeRegions = [...new Set(scoped.map(proposal => proposal.region.split(' ')[0]))]
+  const networkCoverage = [services.has('Route 53'), services.has('CloudFront'), services.has('Amazon VPC'), services.has('AWS IAM')].filter(Boolean).length
+  const icons: Record<string, typeof Cloud> = { 'Route 53': Router, CloudFront: Wifi, 'Amazon VPC': Network, 'Amazon EC2': Server, 'Amazon RDS': Database, 'Amazon S3': Boxes }
   const descriptions: Record<string, string> = { 'Route 53': 'Resolucion DNS', CloudFront: 'Distribucion CDN', 'Amazon VPC': 'Red privada aislada', 'Amazon EC2': 'Capa de aplicacion', 'Amazon RDS': 'Base de datos relacional', 'Amazon S3': 'Almacenamiento de objetos' }
+  const recommendations = [
+    !services.has('Route 53') && 'Agrega Route 53 para administrar DNS y enrutamiento.',
+    !services.has('CloudFront') && 'Agrega CloudFront para reducir latencia y proteger el origen.',
+    !services.has('Amazon VPC') && 'Agrega Amazon VPC para aislar los recursos en una red privada.',
+    !services.has('AWS IAM') && 'Agrega AWS IAM para controlar el acceso a los componentes.',
+  ].filter((item): item is string => Boolean(item))
+  const renderNode = (service: string) => { const Icon = icons[service] ?? Boxes; return <div className="layer-node" key={service}><span><Icon size={20}/></span><div><b>{service}</b><small>{descriptions[service]}</small></div><StatusBadge/></div> }
 
   return <><Header title="Arquitectura de red" subtitle="Flujo generado con los servicios de la planificacion seleccionada."/><main>
-    <section className="panel network-panel"><SectionTitle title={selectedId ? scoped[0]?.name ?? 'Planificacion' : 'Topologia general'} detail={`${nodes.length} componentes conectados según la seleccion activa`}/>
-      {nodes.length ? <div className="dynamic-network"><div className="dynamic-node"><span><Globe2 size={21}/></span><b>Internet</b><small>Usuarios</small></div>{nodes.map(service => { const Icon = icons[service] ?? Boxes; return <div className="network-step" key={service}><ArrowRight/><div className="dynamic-node"><span><Icon size={21}/></span><b>{service}</b><small>{descriptions[service]}</small></div></div> })}</div> : <div className="logic-empty"><Network size={32}/><b>Sin topologia disponible</b><span>La seleccion no contiene servicios de red o infraestructura.</span></div>}
-      <div className="network-footer"><span><ShieldCheck/> {services.has('Amazon VPC') ? 'Red aislada con Amazon VPC' : 'VPC no configurada'}</span><span><LockKeyhole/> {services.has('AWS IAM') ? 'Accesos administrados con IAM' : 'IAM no configurado'}</span></div>
+    <section className="stat-grid network-stats"><StatCard label="Componentes de red" value={String(nodeCount)} change={nodeCount ? 'Detectados en la seleccion' : 'Sin componentes'} icon={Network}/><StatCard label="Regiones" value={String(activeRegions.length)} change={activeRegions.join(', ') || 'Sin region activa'} icon={MapPin} tone="violet"/><StatCard label="Cobertura de red" value={`${networkCoverage}/4`} change={networkCoverage === 4 ? 'Arquitectura completa' : 'Hay mejoras disponibles'} icon={ShieldCheck} tone="green"/><StatCard label="Planificaciones" value={String(scoped.length)} change={selectedId ? scoped[0]?.name ?? 'Seleccion activa' : 'Vista general'} icon={Cloud} tone="amber"/></section>
+    <section className="panel network-architecture"><SectionTitle title={selectedId ? scoped[0]?.name ?? 'Planificacion' : 'Topologia general'} detail="Arquitectura lógica organizada por capas"/>
+      {scoped.length ? <div className="architecture-layers">
+        <div className="architecture-entry"><div className="layer-node internet-node"><span><Globe2 size={21}/></span><div><b>Internet</b><small>Usuarios y clientes</small></div><StatusBadge/></div><ArrowRight/></div>
+        <section className="architecture-layer edge-layer"><header><span>01</span><div><b>Perimetro y entrega</b><small>DNS, enrutamiento y distribución global</small></div></header><div className="layer-nodes">{edgeServices.length ? edgeServices.map(renderNode) : <p className="layer-empty">Sin servicios de perímetro</p>}</div></section>
+        <ArrowRight className="layer-arrow"/>
+        <section className={`architecture-layer vpc-layer ${services.has('Amazon VPC') ? 'active' : 'missing'}`}><header><span>02</span><div><b>Red privada</b><small>{services.has('Amazon VPC') ? 'Amazon VPC · subredes aisladas' : 'Amazon VPC no configurada'}</small></div></header><div className="vpc-zones"><div><p>SUBRED PÚBLICA</p><span>{edgeServices.includes('CloudFront') ? 'Entrada desde CloudFront' : 'Sin punto de entrada administrado'}</span></div><div><p>SUBRED PRIVADA</p><div className="layer-nodes">{computeServices.length ? computeServices.map(renderNode) : <p className="layer-empty">Sin capa de computo</p>}</div></div></div></section>
+        <ArrowRight className="layer-arrow"/>
+        <section className="architecture-layer data-layer"><header><span>03</span><div><b>Datos y persistencia</b><small>Servicios ubicados detrás de la aplicación</small></div></header><div className="layer-nodes">{dataServices.length ? dataServices.map(renderNode) : <p className="layer-empty">Sin servicios de datos</p>}</div></section>
+      </div> : <div className="logic-empty"><Network size={32}/><b>Sin topologia disponible</b><span>Crea una planificacion para generar la arquitectura de red.</span></div>}
+      <div className="network-footer"><span><ShieldCheck/> {services.has('Amazon VPC') ? 'Recursos aislados en Amazon VPC' : 'Aislamiento de red pendiente'}</span><span><LockKeyhole/> {services.has('AWS IAM') ? 'Accesos administrados con IAM' : 'Control de acceso pendiente'}</span></div>
     </section>
+    <section className="panel network-advice"><SectionTitle title="Recomendaciones de arquitectura" detail={recommendations.length ? `${recommendations.length} mejoras detectadas` : 'La cobertura base esta completa'}/>{recommendations.length ? <div>{recommendations.map((recommendation, index) => <article key={recommendation}><span>{index + 1}</span><p>{recommendation}</p></article>)}</div> : <div className="network-complete"><ShieldCheck size={20}/><span>La selección incluye DNS, CDN, red privada y control de acceso.</span></div>}</section>
   </main></>
 }
 
