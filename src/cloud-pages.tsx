@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Activity, ArrowRight, Boxes, Cloud, Database, DollarSign, Download, Globe2, LockKeyhole, MapPin, Network, Router, Save, Server, Shield, ShieldCheck, Trash2, Wifi } from 'lucide-react'
+import { Activity, ArrowRight, Boxes, Cloud, Database, DollarSign, Download, Globe2, LockKeyhole, MapPin, Network, Router, Save, Server, Shield, ShieldCheck, Trash2, Users, Wifi } from 'lucide-react'
 import { Header, SectionTitle, StatCard, StatusBadge } from './components'
 import { awsServices, costData } from './data'
 import type { Proposal } from './types'
@@ -11,6 +11,7 @@ import {
   downloadReport,
   estimateProposal,
   money,
+  parseUsers,
   regions,
   saveProposals,
   serviceMonthlyRates,
@@ -89,6 +90,9 @@ export function CloudPlanning() {
   const [proposal, setProposal] = useState<Proposal>({ ...blankProposal, region: regionLabel(activeRegion) })
   const [message, setMessage] = useState('')
   const preview = estimateProposal(proposal)
+  const proposalRegion = regions.find(region => proposal.region.startsWith(region.code)) ?? regions[0]
+  const estimatedUsers = parseUsers(proposal.users)
+  const exceedsRegionCapacity = estimatedUsers > proposalRegion.estimatedUsers
   const update = (key: keyof Proposal, value: string | string[]) => setProposal(current => ({ ...current, [key]: value }))
   const toggleService = (service: string) => update('services', proposal.services.includes(service) ? proposal.services.filter(item => item !== service) : [...proposal.services, service])
   const submit = (event: FormEvent) => {
@@ -112,13 +116,14 @@ export function CloudPlanning() {
         <div className="form-grid">
           <label>Nombre de la solucion<input required value={proposal.name} onChange={event => update('name', event.target.value)}/></label>
           <label>Tipo de aplicacion<select value={proposal.appType} onChange={event => update('appType', event.target.value)}><option>Aplicacion web</option><option>API empresarial</option><option>Plataforma de datos</option></select></label>
-          <label>Region<select value={proposal.region} onChange={event => update('region', event.target.value)}>{regions.map(region => <option key={region.code}>{regionLabel(region.code)}</option>)}</select></label>
+          <label>Region<select value={proposal.region} onChange={event => update('region', event.target.value)}>{regions.map(region => <option value={regionLabel(region.code)} key={region.code}>{region.code} · {region.name} · hasta {region.estimatedUsers.toLocaleString('en-US')} usuarios</option>)}</select></label>
           <label>Usuarios estimados<input inputMode="numeric" value={proposal.users} onChange={event => update('users', event.target.value)}/></label>
           <label className="span-2">Disponibilidad<select value={proposal.availability} onChange={event => update('availability', event.target.value)}><option>Disponibilidad estandar</option><option>Alta disponibilidad (Multi-AZ)</option><option>Critica (Multi-region)</option></select></label>
           <label className="span-2">Descripcion<textarea value={proposal.description} onChange={event => update('description', event.target.value)}/></label>
         </div>
+        <div className={`region-capacity ${exceedsRegionCapacity ? 'warning' : ''}`}><Users size={17}/><div><b>{proposalRegion.code}: capacidad planificada de {proposalRegion.estimatedUsers.toLocaleString('en-US')} usuarios</b><span>{exceedsRegionCapacity ? `La estimacion supera la capacidad del modelo por ${(estimatedUsers - proposalRegion.estimatedUsers).toLocaleString('en-US')} usuarios. Considera Multi-region.` : `La carga estimada utiliza ${Math.round(estimatedUsers / proposalRegion.estimatedUsers * 100)}% de la capacidad planificada.`}</span></div></div>
         <p className="field-title">Servicios AWS incluidos</p>
-        <div className="service-picker">{awsServices.map(service => <label className={proposal.services.includes(service.name) ? 'selected' : ''} key={service.name}><input type="checkbox" checked={proposal.services.includes(service.name)} onChange={() => toggleService(service.name)}/><span>{service.name}</span></label>)}</div>
+        <div className="service-picker planning-picker">{awsServices.map(service => { const selected = proposal.services.includes(service.name); return <label className={selected ? 'selected' : ''} key={service.name}><input type="checkbox" checked={selected} onChange={() => toggleService(service.name)}/><div><span>{service.name}</span><small>{selected ? `Operativo · ${service.function}` : `Recomendado para: ${service.function}`}</small></div>{selected && <StatusBadge label="Operativo"/>}</label> })}</div>
         <div className="estimate logic-estimate"><span>Estimacion mensual</span><h2>{money(preview.monthly)}</h2><small>{proposal.services.length} servicios · escala de carga x{preview.userFactor}</small></div>
         <button className="full-btn" type="submit"><Save size={17}/> Guardar propuesta</button>
       </form>
