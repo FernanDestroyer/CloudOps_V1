@@ -2,6 +2,7 @@ import { type ComponentType, type ReactNode, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Bell, Boxes, Calculator, CheckCircle2, ChevronRight, Cloud, Globe2, LayoutDashboard, Network, Plus, ShieldCheck, Waypoints } from 'lucide-react'
 import type { AwsService, Status } from './types'
+import { useSelectedProposal } from './cloud-data'
 
 export const navItems = [
   ['Dashboard', '/dashboard', LayoutDashboard], ['Planificacion', '/planning', Plus], ['Costos', '/costs', Calculator], ['Infraestructura', '/infrastructure', Globe2], ['Seguridad', '/security', ShieldCheck], ['Red', '/network', Network], ['Servicios AWS', '/services', Boxes]
@@ -13,7 +14,8 @@ export function Sidebar() {
 
 export function Header({ title, subtitle, action }: { title: string; subtitle: string; action?: ReactNode }) {
   const [showNotifications, setShowNotifications] = useState(false)
-  return <header className="header"><div><p className="eyebrow">CLOUDOPS / PLATAFORMA</p><h1>{title}</h1><p className="subtitle">{subtitle}</p></div><div className="header-actions">{action}<div className="notification-wrap"><button className="icon-btn" aria-label="Notificaciones" onClick={() => setShowNotifications(!showNotifications)}><Bell size={19}/><i/></button>{showNotifications && <div className="notifications"><b>Notificaciones</b><p><strong>Revision IAM</strong> Hay 2 usuarios sin MFA.</p><p><strong>Costos</strong> El gasto estimado subio 4.8%.</p></div>}</div></div></header>
+  const { proposals, selectedId, setSelectedId } = useSelectedProposal()
+  return <header className="header"><div><p className="eyebrow">CLOUDOPS / PLATAFORMA</p><h1>{title}</h1><p className="subtitle">{subtitle}</p></div><div className="header-actions"><label className="planning-selector"><Waypoints size={16}/><span>Planificacion</span><select value={selectedId} onChange={event => setSelectedId(event.target.value)}><option value="">Vista general</option>{proposals.map(proposal => <option value={proposal.id} key={proposal.id ?? proposal.name}>{proposal.name}</option>)}</select></label>{action}<div className="notification-wrap"><button className="icon-btn" aria-label="Notificaciones" onClick={() => setShowNotifications(!showNotifications)}><Bell size={19}/><i/></button>{showNotifications && <div className="notifications"><b>Notificaciones</b><p><strong>Revision IAM</strong> Hay 2 usuarios sin MFA.</p><p><strong>Costos</strong> El gasto estimado subio 4.8%.</p></div>}</div></div></header>
 }
 
 const statusText: Record<Status, string> = { healthy: 'Operativo', review: 'En revision', alert: 'Atencion' }
